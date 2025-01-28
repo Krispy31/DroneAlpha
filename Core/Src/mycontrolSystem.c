@@ -6,6 +6,14 @@
 #define PID_CONSTANT_I  1
 #define PID_CONSTANT_D  1
 
+ 
+/********************************************************************************
+// TODO: Add some of these
+* Xy parameter should be the same, and different from the z set of PID constants
+* Have rails for the x/y dimensions…
+* Conver over to struct of xyz
+********************************************************************************/
+
 // Psudo header
 typedef enum MotorNumber {MOTOR_ZERO, MOTOR_ONE, MOTOR_TWO, MOTOR_THREE, MOTOR_COUNT};
 
