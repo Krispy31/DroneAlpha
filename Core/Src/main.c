@@ -506,6 +506,24 @@ void StartDefaultTask(void const * argument)
 void StartTask02(void const * argument)
 {
   /* USER CODE BEGIN StartTask02 */
+
+	/*
+	 * This task will be mainly for the flight controls
+	 */
+
+	////
+	////    while (1)
+	////    {
+	////
+	////        HAL_Delay(200);// wait for 200 ms
+	////        setMotorSpeed_DMA(0, speed);
+	////        setMotorSpeed_DMA(1, speed);
+	////        setMotorSpeed_DMA(2, speed);
+	////        setMotorSpeed_DMA(3, speed++);
+	////        if (speed >= 190)
+	////            speed = 0;
+	////    }
+
   /* Infinite loop */
   for(;;)
   {
@@ -530,6 +548,27 @@ void StartTask03(void const * argument)
     osDelay(1);
   }
   /* USER CODE END StartTask03 */
+}
+
+/**
+  * @brief  Period elapsed callback in non blocking mode
+  * @note   This function is called  when TIM1 interrupt took place, inside
+  * HAL_TIM_IRQHandler(). It makes a direct call to HAL_IncTick() to increment
+  * a global variable "uwTick" used as application time base.
+  * @param  htim : TIM handle
+  * @retval None
+  */
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+  /* USER CODE BEGIN Callback 0 */
+
+  /* USER CODE END Callback 0 */
+  if (htim->Instance == TIM1) {
+    HAL_IncTick();
+  }
+  /* USER CODE BEGIN Callback 1 */
+
+  /* USER CODE END Callback 1 */
 }
 
 /**

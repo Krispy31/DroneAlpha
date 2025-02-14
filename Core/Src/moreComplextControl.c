@@ -6,7 +6,9 @@
 #define PID_CONSTANT_I  1
 #define PID_CONSTANT_D  1
 
- 
+#include <stdbool.h>
+#include "mycontrolSystem.h"
+
 /********************************************************************************
 // TODO: Add some of these
 * Xy parameter should be the same, and different from the z set of PID constants
@@ -15,14 +17,14 @@
 ********************************************************************************/
 
 // Psudo header
-typedef enum MotorNumber {MOTOR_ZERO, MOTOR_ONE, MOTOR_TWO, MOTOR_THREE, MOTOR_COUNT};
 
 
-static void updateReadings (char);
-void addReading(char);
-void initMotors (void);
-void PIDController (void);
-void updateMotor(MotorNumber, unsigned char);
+
+//static void updateReadings (char);
+//void addReading(char);
+//void initMotors (void);
+//void PIDController (void);
+//void updateMotor(MotorNumber, unsigned char temp);
 
 
 
@@ -71,7 +73,7 @@ void addReading(char reading) {
 }
 
 
-static void updateReadings (char newAverage) {
+ void updateReadings (char newAverage) {
     // gets rid of the old averaged reading, adds new reading
     for (char i=OLD_READINGS-1;i>0;i--) {
         pastReadings[i] = pastReadings[i-1];
