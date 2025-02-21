@@ -20,6 +20,7 @@
 #include "main.h"
 #include "cmsis_os.h"
 #include "usb_host.h"
+#include "mycontrolSystem.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -33,6 +34,9 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+
+
+
 
 /* USER CODE END PD */
 
@@ -473,6 +477,18 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+void startPWM(MotorNumber motor)
+{
+	uint8_t channel = motor * 0x04;
+	HAL_TIM_PWM_Start(&htim2, channel);
+}
+
+
+void stopPWM(MotorNumber motor)
+{
+	 uint8_t channel = motor * 0x04;
+	 HAL_TIM_PWM_Stop(&htim2, channel);
+}
 
 /* USER CODE END 4 */
 
@@ -511,18 +527,31 @@ void StartTask02(void const * argument)
 	 * This task will be mainly for the flight controls
 	 */
 
-	////
-	////    while (1)
-	////    {
-	////
-	////        HAL_Delay(200);// wait for 200 ms
-	////        setMotorSpeed_DMA(0, speed);
-	////        setMotorSpeed_DMA(1, speed);
-	////        setMotorSpeed_DMA(2, speed);
-	////        setMotorSpeed_DMA(3, speed++);
-	////        if (speed >= 190)
-	////            speed = 0;
-	////    }
+
+	    while (1)
+	    {
+
+
+	         startPWM(MOTOR_ZERO);
+	         startPWM(MOTOR_ONE);
+	         startPWM(MOTOR_TWO);
+	         startPWM(MOTOR_THREE);
+
+
+	        HAL_Delay(10000);// wait for 200 ms
+
+	        stopPWM(MOTOR_ZERO);
+	        stopPWM(MOTOR_ONE);
+	        stopPWM(MOTOR_TWO);
+	        stopPWM(MOTOR_THREE);
+
+//	        setMotorSpeed_DMA(0, speed);
+//	        setMotorSpeed_DMA(1, speed);
+//	        setMotorSpeed_DMA(2, speed);
+//	        setMotorSpeed_DMA(3, speed++);
+//	        if (speed >= 190)
+//	            speed = 0;
+	    }
 
   /* Infinite loop */
   for(;;)
