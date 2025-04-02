@@ -1,5 +1,8 @@
-//#include "stm32f4xx_hal.h"
-//#include <stdint.h>
+#include "stm32f4xx_hal.h"
+#include <stdint.h>
+
+
+#include "practicePWM.h"
 //
 ///*================= Configuration Constants =================*/
 //
@@ -29,7 +32,8 @@
 //void SystemClock_Config(void);
 //void PWM_DMA_Init(void);
 //static void Error_Handler(void);
-//static void BuildDShotPacket(uint16_t throttle, uint16_t *packet);
+
+
 //void setMotorSpeed_DMA(int motor, int speed);
 //
 ///*================= Implementation =================*/
@@ -147,19 +151,20 @@
 /////**
 ////  * @brief  Build a DShot600 packet from a throttle value.
 ////  */
-////static void BuildDShotPacket(uint16_t throttle, uint16_t *packet)
-////{
-////    uint16_t dshotPacket = throttle << 5; // Bits 15:5 = throttle, bit 4 = telemetry (0)
-////    uint16_t c = dshotPacket;
-////    uint16_t checksum = 0;
-////    for (int i = 0; i < 3; i++) {
-////        checksum ^= (c & 0xF);
-////        c >>= 4;
-////    }
-////    dshotPacket |= (checksum & 0xF);
-////    *packet = dshotPacket;
-////}
-//
+
+ void BuildDShotPacket(uint16_t throttle, uint16_t *packet)
+{
+    uint16_t dshotPacket = throttle << 5; // Bits 15:5 = throttle, bit 4 = telemetry (0)
+    uint16_t c = dshotPacket;
+    uint16_t checksum = 0;
+    for (int i = 0; i < 3; i++) {
+        checksum ^= (c & 0xF);
+        c >>= 4;
+    }
+    dshotPacket |= (checksum & 0xF);
+    *packet = dshotPacket;
+}
+
 ///**
 //  * @brief  Set motor speed via PWM with DMA for the specified motor.
 //  * @param  motor: Motor index (0-3). Each motor is mapped to a separate channel.

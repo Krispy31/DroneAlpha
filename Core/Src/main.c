@@ -20,7 +20,6 @@
 #include "main.h"
 #include "cmsis_os.h"
 #include "usb_host.h"
-#include "mycontrolSystem.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -35,7 +34,9 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 
-
+#define TIMER_TICKS 80
+#define HIGH_1 (TIMER_TICKS * 3 / 4) // 53
+#define HIGH_0 (TIMER_TICKS * 3 / 8) // 26
 
 
 /* USER CODE END PD */
@@ -53,6 +54,7 @@ I2S_HandleTypeDef hi2s3;
 SPI_HandleTypeDef hspi1;
 
 TIM_HandleTypeDef htim2;
+DMA_HandleTypeDef hdma_tim2_ch1;
 
 osThreadId mainTaskHandle;
 osThreadId flightControlTaHandle;
@@ -64,6 +66,7 @@ osThreadId sensorTaskHandle;
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_DMA_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_I2S3_Init(void);
 static void MX_SPI1_Init(void);
@@ -110,6 +113,7 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_I2C1_Init();
   MX_I2S3_Init();
   MX_SPI1_Init();
@@ -339,7 +343,7 @@ static void MX_TIM2_Init(void)
   htim2.Instance = TIM2;
   htim2.Init.Prescaler = 0;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 4294967295;
+  htim2.Init.Period = 80;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_PWM_Init(&htim2) != HAL_OK)
@@ -353,13 +357,14 @@ static void MX_TIM2_Init(void)
     Error_Handler();
   }
   sConfigOC.OCMode = TIM_OCMODE_PWM1;
-  sConfigOC.Pulse = 2147483646;
+  sConfigOC.Pulse = 53;
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
   if (HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
   {
     Error_Handler();
   }
+  sConfigOC.Pulse = 2147483646;
   if (HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
   {
     Error_Handler();
@@ -377,6 +382,22 @@ static void MX_TIM2_Init(void)
 
   /* USER CODE END TIM2_Init 2 */
   HAL_TIM_MspPostInit(&htim2);
+
+}
+
+/**
+  * Enable DMA controller clock
+  */
+static void MX_DMA_Init(void)
+{
+
+  /* DMA controller clock enable */
+  __HAL_RCC_DMA1_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* DMA1_Stream5_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Stream5_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Stream5_IRQn);
 
 }
 
@@ -477,18 +498,18 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void startPWM(MotorNumber motor)
-{
-	uint8_t channel = motor * 0x04;
-	HAL_TIM_PWM_Start(&htim2, channel);
-}
-
-
-void stopPWM(MotorNumber motor)
-{
-	 uint8_t channel = motor * 0x04;
-	 HAL_TIM_PWM_Stop(&htim2, channel);
-}
+//void startPWM(MotorNumber motor)
+//{
+//	uint8_t channel = motor * 0x04;
+//	HAL_TIM_PWM_Start(&htim2, channel);
+//}
+//
+//
+//void stopPWM(MotorNumber motor)
+//{
+//	 uint8_t channel = motor * 0x04;
+//	 HAL_TIM_PWM_Stop(&htim2, channel);
+//}
 
 /* USER CODE END 4 */
 
@@ -527,30 +548,39 @@ void StartTask02(void const * argument)
 	 * This task will be mainly for the flight controls
 	 */
 
+		uint16_t dshot_dma_buffer[16];
+		uint16_t packet;
 
+		BuildDShotPacket(100, &packet);
+
+		for(int i = 0; i < 16; i++)
+		{
+			if(packet & (1 << (15 - i)))
+			{
+				dshot_dma_buffer[i] = HIGH_1;
+			}
+			else {
+				dshot_dma_buffer[i] = HIGH_0;
+			}
+		}
+		HAL_TIM_PWM_Start_DMA(&htim2, TIM_CHANNEL_1, (uint32_t *) dshot_dma_buffer, 16);
 	    while (1)
 	    {
+	    	osDelay(300);
+			BuildDShotPacket(100, &packet);
 
+			for(int i = 0; i < 16; i++)
+			{
+				if(packet & (1 << (15 - i)))
+				{
+					dshot_dma_buffer[i] = HIGH_1;
+				}
+				else {
+					dshot_dma_buffer[i] = HIGH_0;
+				}
+			}
+			HAL_TIM_PWM_Start_DMA(&htim2, TIM_CHANNEL_1, (uint32_t *) dshot_dma_buffer, 16);
 
-	         startPWM(MOTOR_ZERO);
-	         startPWM(MOTOR_ONE);
-	         startPWM(MOTOR_TWO);
-	         startPWM(MOTOR_THREE);
-
-
-	        HAL_Delay(10000);// wait for 200 ms
-
-	        stopPWM(MOTOR_ZERO);
-	        stopPWM(MOTOR_ONE);
-	        stopPWM(MOTOR_TWO);
-	        stopPWM(MOTOR_THREE);
-
-//	        setMotorSpeed_DMA(0, speed);
-//	        setMotorSpeed_DMA(1, speed);
-//	        setMotorSpeed_DMA(2, speed);
-//	        setMotorSpeed_DMA(3, speed++);
-//	        if (speed >= 190)
-//	            speed = 0;
 	    }
 
   /* Infinite loop */
