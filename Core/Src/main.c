@@ -20,6 +20,7 @@
 #include "main.h"
 #include "cmsis_os.h"
 #include "usb_host.h"
+#include <stdbool.h>
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -34,13 +35,15 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 
-#define TIMER_TICKS 80
-#define HIGH_1 (TIMER_TICKS * 3 / 4) // 53
-#define HIGH_0 (TIMER_TICKS * 3 / 8) // 26
+#define TIMER_TICKS 280
+#define HIGH_1 (TIMER_TICKS * 2 / 3) // 53
+#define HIGH_0 (TIMER_TICKS * 1 / 3) // 26
+
 
 
 /* USER CODE END PD */
-
+bool buttonToggle = false;
+static bool DMADone = true;
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
 
@@ -343,7 +346,7 @@ static void MX_TIM2_Init(void)
   htim2.Instance = TIM2;
   htim2.Init.Prescaler = 0;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 80;
+  htim2.Init.Period = 280;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_PWM_Init(&htim2) != HAL_OK)
@@ -498,18 +501,14 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-//void startPWM(MotorNumber motor)
-//{
-//	uint8_t channel = motor * 0x04;
-//	HAL_TIM_PWM_Start(&htim2, channel);
-//}
-//
-//
-//void stopPWM(MotorNumber motor)
-//{
-//	 uint8_t channel = motor * 0x04;
-//	 HAL_TIM_PWM_Stop(&htim2, channel);
-//}
+
+void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
+{
+	if (htim->Instance == TIM2 && htim->Channel == HAL_TIM_ACTIVE_CHANNEL_1)
+	{
+		DMADone = true;
+	}
+}
 
 /* USER CODE END 4 */
 
@@ -528,7 +527,15 @@ void StartDefaultTask(void const * argument)
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1);
+	  GPIO_PinState buttonState = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0);
+
+	  if(buttonState == GPIO_PIN_SET)
+	  {
+		  buttonToggle = !buttonToggle;
+		    osDelay(10);
+	  }
+
+    osDelay(50);
   }
   /* USER CODE END 5 */
 }
@@ -548,10 +555,12 @@ void StartTask02(void const * argument)
 	 * This task will be mainly for the flight controls
 	 */
 
+		osDelay(5000);
+
 		uint16_t dshot_dma_buffer[16];
 		uint16_t packet;
 
-		BuildDShotPacket(100, &packet);
+		BuildDShotPacket(1000, &packet);
 
 		for(int i = 0; i < 16; i++)
 		{
@@ -561,27 +570,53 @@ void StartTask02(void const * argument)
 			}
 			else {
 				dshot_dma_buffer[i] = HIGH_0;
-			}
+				 }
 		}
-		HAL_TIM_PWM_Start_DMA(&htim2, TIM_CHANNEL_1, (uint32_t *) dshot_dma_buffer, 16);
-	    while (1)
-	    {
-	    	osDelay(300);
-			BuildDShotPacket(100, &packet);
-
-			for(int i = 0; i < 16; i++)
+		uint16_t counter = 0;
+		while(1)
+		{
+			if(DMADone == true)
 			{
-				if(packet & (1 << (15 - i)))
-				{
-					dshot_dma_buffer[i] = HIGH_1;
-				}
-				else {
-					dshot_dma_buffer[i] = HIGH_0;
-				}
+				HAL_TIM_PWM_Start_DMA(&htim2, TIM_CHANNEL_1, (uint32_t *) dshot_dma_buffer, 16);
+				DMADone = false;
+				counter = 0;
 			}
-			HAL_TIM_PWM_Start_DMA(&htim2, TIM_CHANNEL_1, (uint32_t *) dshot_dma_buffer, 16);
+			counter++;
+		}
 
-	    }
+		uint16_t throttle = 400;
+		osDelay(2000);
+		HAL_TIM_PWM_Stop_DMA(&htim2, TIM_CHANNEL_1);
+//	    while (1)
+//	    {
+//
+//
+//	    	throttle = buttonToggle ? 1000 : 400;
+//
+//	    	if(throttle == 1000)
+//	    	{
+//	    		HAL_GPIO_WritePin(GPIOD, LD5_Pin, GPIO_PIN_SET);
+//	    	}
+//	    	else
+//	    	{
+//	    		HAL_GPIO_WritePin(GPIOD, LD5_Pin, GPIO_PIN_RESET);
+//	    	}
+//	    	osDelay(1000);
+//			BuildDShotPacket(throttle, &packet);
+//
+//			for(int i = 0; i < 16; i++)
+//			{
+//				if(packet & (1 << (15 - i)))
+//				{
+//					dshot_dma_buffer[i] = HIGH_1;
+//				}
+//				else {
+//					dshot_dma_buffer[i] = HIGH_0;
+//				}
+//			}
+//			HAL_TIM_PWM_Start_DMA(&htim2, TIM_CHANNEL_1, (uint32_t *) dshot_dma_buffer, 16);
+//
+//	    }
 
   /* Infinite loop */
   for(;;)
